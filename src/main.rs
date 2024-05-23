@@ -8,7 +8,7 @@ mod drawing;
 use drawing::Canvas;
 
 fn main() {
-    let word: Vec<char> = secret_word("../words.txt")
+    let word: Vec<char> = secret_word("words.txt")
         .unwrap_or_else(|e| {
             println!("Failed to read file.");
             process::exit(1);
