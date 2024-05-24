@@ -1,16 +1,22 @@
 use rand::Rng;
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::{self, Write, Read};
 use std::process;
+
+use termion::screen::IntoAlternateScreen;
 
 mod drawing;
 use drawing::Canvas;
 
+
 fn main() {
+    let mut screen = io::stdout().into_alternate_screen().unwrap();
+    screen.flush().unwrap();
+    
     let word: Vec<char> = secret_word("words.txt")
         .unwrap_or_else(|e| {
-            println!("Failed to read file.");
+            println!("Failed to read words file: {}", e);
             process::exit(1);
         })
         .chars()
@@ -21,27 +27,26 @@ fn main() {
     let mut correct_guess: bool;
 
     let mut canvas = Canvas::build("visuals.txt").unwrap_or_else(|err| {
-        println!("Unable to prepare image drawing: {:?}", err);
+        println!("Unable to prepare image drawing: {}", err);
         process::exit(1);
     });
     let mut wrong_guesses_count: usize = 0;
     let max_wrong_guesses = canvas.images.len();
-
-    canvas.draw("LET'S PLAY HANGMAN!", &word_hidden, wrong_guesses_count);
+    
+    canvas.draw("LET'S PLAY HANGMAN!", &word_hidden, wrong_guesses_count).unwrap();
     loop {
         correct_guess = false;
 
         let user_guess = get_guess();
         if let Err(err_msg) = user_guess {
             let message = format!("Invalid input. {}", err_msg);
-            canvas.draw(&message, &word_hidden, wrong_guesses_count);
+            canvas.draw(&message, &word_hidden, wrong_guesses_count).unwrap();
             continue;
         }
         let user_guess = user_guess.unwrap();
         if guessed_letters.contains(&user_guess) {
-            //println!("You have already guessed '{}'.", user_guess);
             let message = format!("YOU HAVE ALREADY GUESSED '{}'.", user_guess);
-            canvas.draw(&message, &word_hidden, wrong_guesses_count);
+            canvas.draw(&message, &word_hidden, wrong_guesses_count).unwrap();
             continue;
         }
 
@@ -55,20 +60,19 @@ fn main() {
         guessed_letters.push(user_guess);
 
         if !correct_guess {
-            //println!("Letter not in my word.");
             wrong_guesses_count += 1;
-            canvas.draw("LETTER NOT IN MY WORD.", &word_hidden, wrong_guesses_count);
+            canvas.draw("LETTER NOT IN MY WORD.", &word_hidden, wrong_guesses_count).unwrap();
             if wrong_guesses_count == max_wrong_guesses {
                 let word_formatted: String = word.iter().collect();
-                println!("You lose! My word was {}", word_formatted);
+                println!("YOU LOSE. MY WORD WAS '{}'", word_formatted);
                 break;
             }
             continue;
         } else {
-            canvas.draw("Good.", &word_hidden, wrong_guesses_count);
+            canvas.draw("GOOD.", &word_hidden, wrong_guesses_count).unwrap();
 
             if chars_left_count == 0 {
-                println!("GOOD");
+                println!("YOU GOT IT. GREAT!");
                 break;
             }
         }
@@ -78,7 +82,7 @@ fn main() {
 fn secret_word(wordfile: &str) -> Result<String, Box<dyn Error>> {
     let mut contents = String::new();
     let mut filehandle = File::open(wordfile)?;
-    filehandle.read_to_string(&mut contents);
+    filehandle.read_to_string(&mut contents)?;
 
     let lines: Vec<&str> = contents.lines().collect();
     let mut rng = rand::thread_rng();
@@ -92,7 +96,7 @@ fn get_guess() -> Result<String, &'static str> {
     let mut guess = String::new();
     io::stdin()
         .read_line(&mut guess)
-        .expect("Failed to read from stdin");
+        .expect("Failed to read from stdin.");
     let guess = guess.trim();
 
     if guess.len() != 1 {

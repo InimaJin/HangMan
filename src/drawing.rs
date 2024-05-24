@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fs::File;
-use std::io::Read;
+use std::io::{self, Read};
+
 
 pub struct Canvas {
     pub images: Vec<String>,
